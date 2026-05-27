@@ -327,7 +327,7 @@ export function ApplicationDetailModal({ application, onClose, onPrev, onNext, h
             overflowY: 'auto', background: '#fff',
           }}
         >
-          {/* Header: close btn */}
+          {/* Header: name + nav arrows + close btn */}
           <div style={{
             display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
             padding: '20px 20px 0',
@@ -347,18 +347,60 @@ export function ApplicationDetailModal({ application, onClose, onPrev, onNext, h
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: 7, background: 'transparent', border: 'none', cursor: 'pointer',
-                borderRadius: 10, color: '#9CA3AF', flexShrink: 0,
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#F3F4F6'; e.currentTarget.style.color = '#374151' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9CA3AF' }}
-            >
-              <X style={{ width: 18, height: 18 }} />
-            </button>
+            {/* Right controls: prev / next / close */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+              {(hasPrev || hasNext) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={onPrev}
+                    disabled={!hasPrev}
+                    title="Previous applicant (Alt+←)"
+                    style={{
+                      padding: 6, background: 'transparent', border: 'none',
+                      cursor: hasPrev ? 'pointer' : 'not-allowed',
+                      borderRadius: 8, color: hasPrev ? '#6B7280' : '#D1D5DB',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => { if (hasPrev) { e.currentTarget.style.background = '#F3F4F6'; e.currentTarget.style.color = '#111827' } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = hasPrev ? '#6B7280' : '#D1D5DB' }}
+                  >
+                    <ChevronLeft style={{ width: 18, height: 18 }} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onNext}
+                    disabled={!hasNext}
+                    title="Next applicant (Alt+→)"
+                    style={{
+                      padding: 6, background: 'transparent', border: 'none',
+                      cursor: hasNext ? 'pointer' : 'not-allowed',
+                      borderRadius: 8, color: hasNext ? '#6B7280' : '#D1D5DB',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => { if (hasNext) { e.currentTarget.style.background = '#F3F4F6'; e.currentTarget.style.color = '#111827' } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = hasNext ? '#6B7280' : '#D1D5DB' }}
+                  >
+                    <ChevronRight style={{ width: 18, height: 18 }} />
+                  </button>
+                  <div style={{ width: 1, height: 18, background: '#E5E7EB', margin: '0 4px' }} />
+                </>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  padding: 7, background: 'transparent', border: 'none', cursor: 'pointer',
+                  borderRadius: 10, color: '#9CA3AF',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F3F4F6'; e.currentTarget.style.color = '#374151' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9CA3AF' }}
+              >
+                <X style={{ width: 18, height: 18 }} />
+              </button>
+            </div>
           </div>
 
           <div style={{ padding: '0 20px', flex: 1 }}>
@@ -578,49 +620,6 @@ export function ApplicationDetailModal({ application, onClose, onPrev, onNext, h
           </div>
         </div>
 
-        {/* Application prev/next nav (Alt+← / Alt+→) */}
-        {(hasPrev || hasNext) && (
-          <>
-            {hasPrev && (
-              <button
-                type="button"
-                onClick={onPrev}
-                title="Previous applicant (Alt+←)"
-                style={{
-                  position: 'absolute', left: -48, top: '50%', transform: 'translateY(-50%)',
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backdropFilter: 'blur(4px)',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
-              >
-                <ChevronLeft style={{ width: 18, height: 18, color: '#fff' }} />
-              </button>
-            )}
-            {hasNext && (
-              <button
-                type="button"
-                onClick={onNext}
-                title="Next applicant (Alt+→)"
-                style={{
-                  position: 'absolute', right: -48, top: '50%', transform: 'translateY(-50%)',
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backdropFilter: 'blur(4px)',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.3)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
-              >
-                <ChevronRight style={{ width: 18, height: 18, color: '#fff' }} />
-              </button>
-            )}
-          </>
-        )}
       </div>
     </div>
   )

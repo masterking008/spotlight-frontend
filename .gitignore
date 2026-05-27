@@ -1,6 +1,4 @@
 # Environment variables
-.env
-.env.local
 .env.*.local
 
 # Logs
@@ -27,3 +25,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+config.bat

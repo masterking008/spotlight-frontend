@@ -3,13 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ArrowLeft, CheckCircle2, Sparkles, Upload, X, FileText, Loader2, Eye, Film, Calendar, Star, ChevronRight, Radio, BookOpen, XCircle, RotateCcw, Users, UserPlus, Search } from 'lucide-react'
-import { castingCallsApi, aiApi, usersApi } from '../lib/api'
-import type { FormSchema, FormField, Collaborator, UserProfile } from '../lib/api'
+import { ArrowLeft, CheckCircle2, Sparkles, Upload, X, FileText, Loader2, Eye, Film, Calendar, Star, ChevronRight, Radio, BookOpen, XCircle, RotateCcw, UserPlus } from 'lucide-react'
+import { castingCallsApi, aiApi } from '../lib/api'
+import type { FormSchema, FormField, Collaborator, CastingCall } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { FormBuilder } from '../components/FormBuilder'
 import { BannerCropper } from '../components/BannerCropper'
 import { successToast, errorToast } from '../lib/swal'
+import { CollaborateDialog } from '../components/CollaborateDialog'
 
 const schema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
@@ -518,185 +519,6 @@ function FormPreviewModal({
 
 // ─── Collaborators Panel ──────────────────────────────────────────────────────
 
-function CollaboratorsPanel({
-  castingCallId,
-  ownerId,
-  collaborators,
-  onChange,
-}: {
-  castingCallId: number | null
-  ownerId: string | null
-  collaborators: Collaborator[]
-  onChange: (updated: Collaborator[]) => void
-}) {
-  const { user } = useAuth()
-  const [allUsers, setAllUsers] = useState<UserProfile[]>([])
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState<string | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // Load eligible managers once
-  useEffect(() => {
-    usersApi.searchManagers().then(r => setAllUsers(r.data)).catch(() => {})
-  }, [])
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  const collaboratorIds = new Set(collaborators.map(c => c.id))
-
-  const suggestions = allUsers.filter(u => {
-    if (!['casting_manager', 'admin'].includes(u.role)) return false
-    if (u.id === ownerId) return false          // owner can't be added
-    if (u.id === user?.id) return false         // current user
-    if (collaboratorIds.has(u.id)) return false // already added
-    if (!query.trim()) return true
-    const q = query.toLowerCase()
-    return (u.full_name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
-  })
-
-  const handleAdd = useCallback(async (u: UserProfile) => {
-    if (!castingCallId) return
-    setSaving(u.id)
-    try {
-      const res = await castingCallsApi.addCollaborator(castingCallId, u.id)
-      onChange(res.data.collaborators ?? [])
-      setQuery('')
-      setOpen(false)
-    } catch {
-      // swallow — toast handled globally
-    } finally {
-      setSaving(null)
-    }
-  }, [castingCallId, onChange])
-
-  const handleRemove = useCallback(async (userId: string) => {
-    if (!castingCallId) return
-    setSaving(userId)
-    try {
-      const res = await castingCallsApi.removeCollaborator(castingCallId, userId)
-      onChange(res.data.collaborators ?? [])
-    } catch {
-      // swallow
-    } finally {
-      setSaving(null)
-    }
-  }, [castingCallId, onChange])
-
-  return (
-    <div style={{ background: 'var(--white)', borderRadius: 12, border: '1px solid var(--border)' }}>
-      <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Users style={{ width: 13, height: 13, color: 'var(--faint)' }} />
-        <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0, flex: 1 }}>Co-managers</p>
-        {collaborators.length > 0 && (
-          <span style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '1px 7px' }}>
-            {collaborators.length}
-          </span>
-        )}
-      </div>
-      <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-        {/* Current collaborators */}
-        {collaborators.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {collaborators.map(c => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--surface)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--blue)' }}>
-                    {(c.full_name || c.email).charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--navy)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.full_name || c.email}
-                  </p>
-                  {c.full_name && (
-                    <p style={{ fontSize: 11, color: 'var(--faint)', margin: 0 }}>{c.email}</p>
-                  )}
-                </div>
-                {castingCallId && (
-                  <button
-                    type="button"
-                    disabled={saving === c.id}
-                    onClick={() => handleRemove(c.id)}
-                    style={{ background: 'none', border: 'none', cursor: saving === c.id ? 'not-allowed' : 'pointer', padding: 3, color: 'var(--faint)', display: 'flex', alignItems: 'center', borderRadius: 4, flexShrink: 0 }}
-                    onMouseEnter={e => (e.currentTarget.style.color = 'var(--rose)')}
-                    onMouseLeave={e => (e.currentTarget.style.color = 'var(--faint)')}
-                    title="Remove co-manager"
-                  >
-                    {saving === c.id ? <Loader2 style={{ width: 13, height: 13, animation: 'spin 1s linear infinite' }} /> : <X style={{ width: 13, height: 13 }} />}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Add picker — only available after the call is saved */}
-        {castingCallId ? (
-          <div style={{ position: 'relative' }} ref={dropdownRef}>
-            <div style={{ position: 'relative' }}>
-              <Search style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: 'var(--faint)', pointerEvents: 'none' }} />
-              <input
-                value={query}
-                onChange={e => { setQuery(e.target.value); setOpen(true) }}
-                onFocus={() => setOpen(true)}
-                placeholder="Search by name or email…"
-                style={{ ...inputStyle, paddingLeft: 28, fontSize: 12.5 }}
-              />
-            </div>
-            {open && suggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.08)', zIndex: 50, overflow: 'hidden' }}>
-                {suggestions.slice(0, 6).map(u => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    disabled={!!saving}
-                    onClick={() => handleAdd(u)}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                  >
-                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--purple-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--purple)' }}>
-                        {(u.full_name || u.email).charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--navy)', margin: 0 }}>{u.full_name || u.email}</p>
-                      {u.full_name && <p style={{ fontSize: 11, color: 'var(--faint)', margin: 0 }}>{u.email}</p>}
-                    </div>
-                    {saving === u.id
-                      ? <Loader2 style={{ width: 13, height: 13, color: 'var(--faint)', animation: 'spin 1s linear infinite' }} />
-                      : <UserPlus style={{ width: 13, height: 13, color: 'var(--faint)' }} />
-                    }
-                  </button>
-                ))}
-              </div>
-            )}
-            {open && query.trim() && suggestions.length === 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', zIndex: 50 }}>
-                <p style={{ fontSize: 12, color: 'var(--faint)', margin: 0 }}>No matching managers found</p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p style={{ fontSize: 12, color: 'var(--faint)', margin: 0 }}>
-            Save the casting call first to add co-managers.
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
 
 export default function CastingCallForm() {
   const navigate = useNavigate()
@@ -710,7 +532,8 @@ export default function CastingCallForm() {
   const [status, setStatus] = useState<CastingStatus>('draft')
   const [showPreview, setShowPreview] = useState(false)
   const [collaborators, setCollaborators] = useState<Collaborator[]>([])
-  const [ownerId, setOwnerId] = useState<string | null>(null)
+  const [showCollaborate, setShowCollaborate] = useState(false)
+  const [liveCallData, setLiveCallData] = useState<CastingCall | null>(null)
 
   // AI brief state
   const [brief, setBrief] = useState('')
@@ -739,7 +562,7 @@ export default function CastingCallForm() {
         if (cc.form_schema) setFormSchema(cc.form_schema)
         if (cc.banner_url) setBannerUrl(cc.banner_url)
         setCollaborators(cc.collaborators ?? [])
-        setOwnerId(cc.owner_id)
+        setLiveCallData(cc)
       })
       .catch(() => errorToast('Failed to load casting call'))
       .finally(() => setLoadingData(false))
@@ -861,6 +684,25 @@ export default function CastingCallForm() {
 
         {/* ── Action buttons — contextual by status ── */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+
+          {/* Collaborate — only on edit */}
+          {isEdit && (
+            <button
+              type="button"
+              onClick={() => setShowCollaborate(true)}
+              style={{ padding: '6px 12px', background: 'var(--white)', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 7, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 5 }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--navy)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--white)'; e.currentTarget.style.color = 'var(--muted)' }}
+            >
+              <UserPlus style={{ width: 13, height: 13 }} />
+              Collaborate
+              {collaborators.length > 0 && (
+                <span style={{ fontSize: 10.5, fontWeight: 700, background: 'var(--blue-lt)', color: 'var(--blue)', borderRadius: 20, padding: '1px 6px', lineHeight: 1.6 }}>
+                  {collaborators.length}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Preview — always visible */}
           <button
@@ -1032,13 +874,6 @@ export default function CastingCallForm() {
             </div>
           </div>
 
-          <CollaboratorsPanel
-            castingCallId={isEdit ? id! : null}
-            ownerId={ownerId}
-            collaborators={collaborators}
-            onChange={setCollaborators}
-          />
-
         </div>
 
         {/* Right — form builder */}
@@ -1056,6 +891,14 @@ export default function CastingCallForm() {
           </div>
         </div>
       </form>
+
+      {/* Collaborate dialog */}
+      {showCollaborate && liveCallData && (
+        <CollaborateDialog
+          castingCall={{ ...liveCallData, collaborators }}
+          onClose={() => setShowCollaborate(false)}
+        />
+      )}
 
       {/* Preview modal — reads live form values + current schema/banner */}
       <FormPreviewModal

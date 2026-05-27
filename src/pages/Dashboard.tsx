@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Search, Users, Calendar, ExternalLink, Pencil } from 'lucide-react'
+import { Plus, Search, Users, Calendar, ExternalLink, Pencil, UserPlus } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useCastingCalls } from '../hooks/useQueries'
 import { Skeleton } from '../components/ui/skeleton'
 import { getCastingCallUrl } from '../lib/utils'
+import { CollaborateDialog } from '../components/CollaborateDialog'
+import type { CastingCall } from '../lib/api'
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   open:   { label: 'Open',   color: 'var(--green)', bg: 'var(--green-lt)' },
@@ -14,6 +16,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
 
 export default function Dashboard() {
   const [search, setSearch] = useState('')
+  const [collaborateCall, setCollaborateCall] = useState<CastingCall | null>(null)
   const { user } = useAuth()
 
   const { data: castingCalls, isLoading, error } = useCastingCalls()
@@ -134,6 +137,17 @@ export default function Dashboard() {
                       >
                         View Applications
                       </Link>
+                      <button
+                        type="button"
+                        onClick={() => setCollaborateCall(call)}
+                        title="Add collaborators"
+                        className="flex items-center justify-center w-8 rounded-lg transition-colors"
+                        style={{ background: 'var(--surface)', color: 'var(--muted)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--border)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
+                      >
+                        <UserPlus size={13} />
+                      </button>
                       <Link
                         to={`/calls/${call.id}/edit`}
                         className="flex items-center justify-center w-8 rounded-lg transition-colors"
@@ -194,6 +208,12 @@ export default function Dashboard() {
             )}
           </div>
         )
+      )}
+      {collaborateCall && (
+        <CollaborateDialog
+          castingCall={collaborateCall}
+          onClose={() => setCollaborateCall(null)}
+        />
       )}
     </div>
   )
